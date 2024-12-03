@@ -1,0 +1,44 @@
+---
+- name: Setup Prometheus and Grafana on Dockerized VM
+  hosts: your_vm
+  become: yes
+  tasks:
+    - name: Install Prometheus
+      shell: |
+        cd /opt
+        wget https://github.com/prometheus/prometheus/releases/download/v2.45.0/prometheus-2.45.0.linux-amd64.tar.gz
+        tar -xvzf prometheus-2.45.0.linux-amd64.tar.gz
+        cd prometheus-2.45.0.linux-amd64
+        ./prometheus --config.file=prometheus.yml
+      async: 600
+      poll: 0
+
+    - name: Install Docker Exporter
+      docker_container:
+        name: docker_exporter
+        image: prom/prometheus
+        state: started
+        exposed_ports:
+          - "9104:9104"
+        volumes:
+          - /var/run/docker.sock:/var/run/docker.sock:ro
+
+    - name: Install Grafana
+      apt:
+        name: grafana
+        state: present
+
+    - name: Start Grafana service
+      systemd:
+        name: grafana-server
+        state: started
+        enabled: yes
+
+    - name: Set up Grafana data source for Prometheus
+      uri:
+        url: "http://localhost:3000/api/datasources"
+        method: POST
+        headers:
+          Content-Type: "application/json"
+        body: '{"name": "Prometheus", "type": "prometheus", "url": "http://localhost:9090", "access": "proxy"}'
+        status_code: 200

@@ -1,0 +1,61 @@
+name: Docker Build and Deploy
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:   
+    branches:
+      - main
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    # Checkout code
+    - name: Checkout Code
+      uses: actions/checkout@v3
+
+    # Build Docker Image
+    - name: Build Docker Image
+      run: docker build -t dotnetcore-app .
+
+    # Login to ACR
+    - name: Login to Azure Container Registry
+      uses: azure/docker-login@v1
+      with:
+        login-server: <acr-name>.azurecr.io
+        username: ${{ secrets.ACR_USERNAME }}
+        password: ${{ secrets.ACR_PASSWORD }}
+
+    # Push Docker Image to ACR
+    - name: Push Docker Image
+      run: |
+        docker tag dotnetcore-app <acr-name>.azurecr.io/dotnetcore-app:latest
+        docker push <acr-name>.azurecr.io/dotnetcore-app:latest
+
+        # Deploy or Update Container
+    - name: Deploy or Update Container
+      run: |
+        if az container show --name dotnetcore-container --resource-group <resource-group> >/dev/null 2>&1; then
+          az container update \
+            --resource-group <resource-group> \
+            --name dotnetcore-container \
+            --image <acr-name>.azurecr.io/dotnetcore-app:latest
+        else
+          az container create \
+            --resource-group <resource-group> \
+            --name dotnetcore-container \
+            --image <acr-name>.azurecr.io/dotnetcore-app:latest \
+            --cpu 1 --memory 1 \
+            --registry-login-server < acr-name>.azurecr.io \
+            --registry-username ${{ secrets.ACR_USERNAME }} \
+            --registry-password ${{ secrets.ACR_PASSWORD }}
+        fi
+      # Health Check
+    - name: Verify Deployment
+      run: |
+       az container show --name dotnetcore-container --resource-group <resource-group> \
+        --query "instanceView.state" -o tsv
+  
+

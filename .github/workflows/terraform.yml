@@ -1,0 +1,58 @@
+name: Terraform Pipeline
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - terraform/**
+  pull_request:
+    branches:
+      - main
+    paths:
+      - terraform/**
+
+jobs:
+  terraform:
+    runs-on: ubuntu-latest
+
+    steps:
+    # Checkout code
+    - name: Checkout Code
+      uses: actions/checkout@v3
+
+    # Setup Terraform
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v2
+      with:
+        terraform_version: 1.5.0
+
+    # Login to Azure
+    - name: Azure Login
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+    # Generate SSH Key Pair
+    - name: Generate SSH Key Pair
+      run: |
+        mkdir -p ~/.ssh
+        ssh-keygen -t rsa -b 2048 -f ~/.ssh/terraform_key -N "" # No passphrase
+        echo "SSH key pair generated"
+      id: ssh_key_gen
+
+    # Set SSH public key as a secret
+    - name: Set SSH Public Key as Variable
+      run: echo "SSH_PUBLIC_KEY=$(cat ~/.ssh/terraform_key.pub)" >> $GITHUB_ENV
+
+    # Initialize Terraform
+    - name: Terraform Init
+      run: terraform init
+
+    # Terraform Plan
+    - name: Terraform Plan
+      run: terraform plan -out=tfplan
+
+    # Terraform Apply
+    - name: Terraform Apply
+      run: terraform apply -auto-approve tfplan
