@@ -17,20 +17,15 @@ jobs:
   terraform:
     runs-on: ubuntu-latest
     permissions:
-      id-token: write  # Ensures the workflow can request the ID token
+      id-token: write  # Necessary for OIDC login
+      contents: read
 
     steps:
       # Checkout code
       - name: Checkout Code
         uses: actions/checkout@v3
 
-      # Setup Terraform
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v2
-        with:
-          terraform_version: 1.5.0
-
-      # Login to Azure using Service Principal
+      # Azure Login
       - name: Azure Login
         uses: azure/login@v1
         with:
@@ -38,16 +33,16 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
           environment: azurecloud
-          auth-type: SERVICE_PRINCIPAL
-          
-      # Initialize Terraform
+          auth-type: "OIDC"
+
+      # Terraform Init
       - name: Terraform Init
         run: terraform init ./terraform
 
       # Terraform Plan
       - name: Terraform Plan
-        run: terraform plan -input=false ./terraform
+        run: terraform plan -out=tfplan ./terraform
 
       # Terraform Apply
       - name: Terraform Apply
-        run: terraform apply -auto-approve ./terraform
+        run: terraform apply -auto-approve tfplan
