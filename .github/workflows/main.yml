@@ -1,1 +1,48 @@
+name: Terraform Pipeline
 
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - terraform/**
+  pull_request:
+    branches:
+      - main
+    paths:
+      - terraform/**
+
+jobs:
+  terraform:
+    runs-on: ubuntu-latest
+
+    steps:
+    # Checkout code
+    - name: Checkout Code
+      uses: actions/checkout@v3
+
+    # Setup Terraform
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v2
+      with:
+        terraform_version: 1.5.0
+
+    # Login to Azure
+    - name: Azure Login
+      uses: azure/login@v1
+      with:
+        az login --service-principal \
+            --username ${{ secrets.AZURE_CLIENT_ID }} \
+            --password ${{ secrets.AZURE_CLIENT_SECRET }} \
+            --tenant   ${{ secrets.AZURE_TENANT_ID }}
+    # Initialize Terraform
+    - name: Terraform Init
+      run: terraform init
+
+    # Terraform Plan
+    - name: Terraform Plan
+      run: terraform plan -out=tfplan
+
+    # Terraform Apply
+    - name: Terraform Apply
+      run: terraform apply -auto-approve tfplan
