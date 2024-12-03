@@ -31,20 +31,10 @@ jobs:
     - name: Azure Login
       uses: azure/login@v1
       with:
-        creds: ${{ secrets.AZURE_CREDENTIALS }}
-
-    # Generate SSH Key Pair
-    - name: Generate SSH Key Pair
-      run: |
-        mkdir -p ~/.ssh
-        ssh-keygen -t rsa -b 2048 -f ~/.ssh/terraform_key -N "" # No passphrase
-        echo "SSH key pair generated"
-      id: ssh_key_gen
-
-    # Set SSH public key as a secret
-    - name: Set SSH Public Key as Variable
-      run: echo "SSH_PUBLIC_KEY=$(cat ~/.ssh/terraform_key.pub)" >> $GITHUB_ENV
-
+        az login --service-principal \
+            --username ${{ secrets.AZURE_CLIENT_ID }} \
+            --password ${{ secrets.AZURE_CLIENT_SECRET }} \
+            --tenant   ${{ secrets.AZURE_TENANT_ID }}
     # Initialize Terraform
     - name: Terraform Init
       run: terraform init
