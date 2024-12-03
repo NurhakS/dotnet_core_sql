@@ -4,9 +4,15 @@ on:
   push:
     branches:
       - main
+    paths-ignore:
+      - 'terraform/**'
+      - 'workflow/**'
   pull_request:   
     branches:
       - main
+    paths-ignore:
+      - 'terraform/**'
+      - 'workflow/**'
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
